@@ -1,0 +1,66 @@
+/* Outfit, self-hosted so the app never touches the network (README §1). */
+@import '@fontsource/outfit/400.css';
+@import '@fontsource/outfit/500.css';
+@import '@fontsource/outfit/600.css';
+@import '@fontsource/outfit/700.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg: #0b0b0b;
+    --surface: #171717;
+    --surface-alt: #1f1f1f;
+    --text: #f5f5f3;
+    --muted: #8a8a85;
+    --accent: #b4cda0;
+    --accent-text: #1a1a1a;
+    --border: rgba(255, 255, 255, 0.08);
+    --shadow: none;
+  }
+
+  [data-pastel='1'] {
+    --bg: #f4f1eb;
+    --surface: #ffffff;
+    --surface-alt: #faf8f4;
+    --text: #1c1a17;
+    --muted: #8f8a82;
+    --accent: #c07a57;
+    --accent-text: #ffffff;
+    --border: rgba(0, 0, 0, 0.08);
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  }
+
+  /* The prototype sets no global line-height; keep browser `normal` so text
+     blocks keep the same rhythm instead of Preflight's 1.5. */
+  html {
+    line-height: normal;
+    background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: Outfit, system-ui, sans-serif;
+    overscroll-behavior-y: none;
+  }
+
+  input::placeholder {
+    color: var(--muted);
+    opacity: 0.75;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
