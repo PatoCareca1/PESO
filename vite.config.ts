@@ -7,10 +7,12 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      // Icons come from the manifest and from includeAssets; keeping them out
+      // of globPatterns stops each one being precached twice.
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       workbox: {
         // Everything the app needs is bundled: no runtime network calls at all.
-        globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        globPatterns: ['**/*.{js,css,html,woff2}'],
         navigateFallback: 'index.html',
         cleanupOutdatedCaches: true,
       },
