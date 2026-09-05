@@ -3,6 +3,8 @@ export const KEYS = {
   sessions: 'peso:sessions',
   settings: 'peso:settings',
   active: 'peso:activeSession',
+  /** Version of the persisted shape; see lib/migrate.ts. */
+  schema: 'peso:schema',
 } as const;
 
 /** Reads and parses a key, falling back on anything unexpected. */
@@ -29,4 +31,9 @@ export function remove(key: string): void {
   } catch {
     /* noop */
   }
+}
+
+/** Wipes every PESO key. Last resort, offered only by the error screen. */
+export function clearAll(): void {
+  Object.values(KEYS).forEach(remove);
 }

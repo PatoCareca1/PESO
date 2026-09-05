@@ -24,7 +24,13 @@ export type Workout = {
 
 export type ExerciseStatus = 'pending' | 'done' | 'skipped';
 
+/**
+ * A set is "done" when the user says so — by tapping its badge, or implicitly
+ * by typing a load or a rep count. kg/reps are optional detail, never a
+ * requirement: the app must work as a plain set counter.
+ */
 export type SetEntry = {
+  done: boolean;
   kg: number | null;
   reps: number | null;
 };
@@ -58,6 +64,7 @@ export type Session = {
  * `number | null` once the session is written to history.
  */
 export type DraftSet = {
+  done: boolean;
   kg: string;
   reps: string;
 };

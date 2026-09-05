@@ -26,14 +26,25 @@ export function exerciseCount(n: number): string {
   return `${n} ${n === 1 ? 'exercício' : 'exercícios'}`;
 }
 
+export function setCount(n: number): string {
+  return `${n} ${n === 1 ? 'série' : 'séries'}`;
+}
+
 /** Digits only — for reps and set counts. */
 export function digits(value: string): string {
   return value.replace(/[^0-9]/g, '');
 }
 
-/** Digits plus one decimal separator, normalised to a dot — for kg. */
+/**
+ * Digits plus at most one decimal separator, normalised to a dot — for kg.
+ * Anything this returns is guaranteed to parse with `toNumberOrNull`, so a
+ * load typed as "1,2,3" can never be silently dropped on save.
+ */
 export function decimal(value: string): string {
-  return value.replace(/[^0-9.,]/g, '').replace(',', '.');
+  const cleaned = value.replace(/[^0-9.,]/g, '').replace(/,/g, '.');
+  const dot = cleaned.indexOf('.');
+  if (dot === -1) return cleaned;
+  return cleaned.slice(0, dot + 1) + cleaned.slice(dot + 1).replace(/\./g, '');
 }
 
 export function toNumberOrNull(value: string): number | null {

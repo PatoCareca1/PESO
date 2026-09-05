@@ -1,6 +1,7 @@
 import { Modal } from '../components/Modal';
 import { OutlineButton, PrimaryButton, QuietButton } from '../components/ui';
 import { decimal, digits } from '../lib/format';
+import { withValue } from '../lib/session';
 import { useStore } from '../store/store';
 import type { ActiveExercise } from '../types';
 
@@ -24,13 +25,21 @@ export function LogModal({
 
   const setField = (row: number, field: 'kg' | 'reps', value: string) =>
     updateActive((session) => {
+      const sets = session.exercises[index]?.sets;
+      const set = sets?.[row];
+      if (sets && set) sets[row] = withValue(set, field, value);
+    });
+
+  // The badge is the set counter: kg and reps are optional detail.
+  const toggleDone = (row: number) =>
+    updateActive((session) => {
       const set = session.exercises[index]?.sets[row];
-      if (set) set[field] = value;
+      if (set) set.done = !set.done;
     });
 
   const addSet = () =>
     updateActive((session) => {
-      session.exercises[index]?.sets.push({ kg: '', reps: '' });
+      session.exercises[index]?.sets.push({ done: false, kg: '', reps: '' });
     });
 
   const removeSet = () =>
@@ -55,16 +64,46 @@ export function LogModal({
   };
 
   return (
-    <Modal title={exercise.name} subtitle={target} onClose={onClose} scrollable>
+    <Modal
+      title={exercise.name}
+      subtitle={target}
+      onClose={onClose}
+      closeLabel="fechar"
+      footer={
+        <>
+          <PrimaryButton className="mb-3" onClick={() => mark('done')}>
+            Concluir exercício
+          </PrimaryButton>
+          <OutlineButton hoverSurface="surface-alt" onClick={() => mark('skipped')}>
+            Não fiz esse
+          </OutlineButton>
+          <QuietButton className="mt-[18px] block w-full text-center" onClick={drop}>
+            tirar da sessão
+          </QuietButton>
+        </>
+      }
+    >
       <div className="mb-[14px] flex flex-col gap-[10px]">
         {exercise.sets.map((set, row) => {
           // Last time's numbers show as an editable grey suggestion.
           const hint = suggestion(exercise.name, row);
           return (
             <div key={row} className="flex items-center gap-[10px]">
-              <div className="flex h-11 w-9 flex-none items-center justify-center rounded-chip border bg-surface-alt text-[14px] font-semibold text-muted tabular-nums">
+              <button
+                type="button"
+                aria-pressed={set.done}
+                aria-label={`Série ${row + 1}${set.done ? ', concluída' : ''}`}
+                onClick={() => toggleDone(row)}
+                className={[
+                  'flex h-11 w-11 flex-none items-center justify-center rounded-chip border text-[14px] font-semibold tabular-nums',
+                  'transition-colors duration-160 ease-out',
+                  set.done
+                    ? 'border-accent bg-accent text-accent-text'
+                    : 'bg-surface-alt text-muted hover:text-text',
+                ].join(' ')}
+              >
                 {row + 1}
-              </div>
+              </button>
               <input
                 value={set.kg}
                 onChange={(e) => setField(row, 'kg', decimal(e.target.value))}
@@ -86,20 +125,12 @@ export function LogModal({
         })}
       </div>
 
-      <div className="mb-6 flex justify-between">
+      <div className="flex justify-between">
         <QuietButton onClick={addSet}>+ série</QuietButton>
-        <QuietButton onClick={removeSet}>– série</QuietButton>
+        <QuietButton onClick={removeSet} disabled={exercise.sets.length <= 1}>
+          – série
+        </QuietButton>
       </div>
-
-      <PrimaryButton className="mb-3" onClick={() => mark('done')}>
-        Concluir exercício
-      </PrimaryButton>
-      <OutlineButton hoverSurface="surface-alt" onClick={() => mark('skipped')}>
-        Não fiz esse
-      </OutlineButton>
-      <QuietButton className="mt-[18px] block w-full text-center" onClick={drop}>
-        tirar da sessão
-      </QuietButton>
     </Modal>
   );
 }

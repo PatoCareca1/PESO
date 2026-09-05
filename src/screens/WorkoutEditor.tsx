@@ -14,6 +14,8 @@ import { useStore } from '../store/store';
 
 type DraftExercise = {
   key: string;
+  /** Set when the row came from the saved template; keeps its id on save. */
+  id?: string;
   name: string;
   sets: string;
   reps: string;
@@ -39,6 +41,7 @@ export function WorkoutEditor({ mode }: { mode: 'create' | 'edit' }) {
     workout
       ? workout.exercises.map((e) => ({
           key: e.id,
+          id: e.id,
           name: e.name,
           sets: String(e.sets),
           reps: String(e.reps),
@@ -71,6 +74,7 @@ export function WorkoutEditor({ mode }: { mode: 'create' | 'edit' }) {
     const input = {
       name: trimmed,
       exercises: filled.map((e) => ({
+        id: e.id,
         name: e.name.trim(),
         sets: Math.max(1, parseInt(e.sets, 10) || 3),
         reps: Math.max(1, parseInt(e.reps, 10) || 10),
@@ -87,10 +91,28 @@ export function WorkoutEditor({ mode }: { mode: 'create' | 'edit' }) {
   };
 
   return (
-    <Screen>
-      <BackButton className="mb-7 block" onClick={back} />
-
-      <h1 className="mb-8 text-display font-bold">
+    <Screen
+      header={<BackButton className="block" onClick={back} />}
+      footer={
+        <>
+          <OutlineButton
+            className="mb-3"
+            onClick={() => setExercises((prev) => [...prev, blankExercise()])}
+          >
+            + exercício
+          </OutlineButton>
+          <PrimaryButton onClick={save}>
+            {editing ? 'Salvar alterações' : 'Salvar treino'}
+          </PrimaryButton>
+          {error && (
+            <p role="alert" className="mt-4 text-center text-[13px] text-muted">
+              {error}
+            </p>
+          )}
+        </>
+      }
+    >
+      <h1 className="mb-8 mt-2 text-display font-bold">
         {editing ? 'Editar treino' : 'Novo treino'}
       </h1>
 
@@ -106,7 +128,7 @@ export function WorkoutEditor({ mode }: { mode: 'create' | 'edit' }) {
         aria-label="Nome do treino"
       />
 
-      <div className="mb-3 flex flex-col gap-3">
+      <div className="flex flex-col gap-3">
         {exercises.map((e, i) => (
           <div key={e.key} className="rounded-card bg-surface p-5 shadow-card">
             <div className="mb-4 flex items-center justify-between">
@@ -156,23 +178,6 @@ export function WorkoutEditor({ mode }: { mode: 'create' | 'edit' }) {
           </div>
         ))}
       </div>
-
-      <OutlineButton
-        className="mb-3"
-        onClick={() => setExercises((prev) => [...prev, blankExercise()])}
-      >
-        + exercício
-      </OutlineButton>
-
-      <PrimaryButton onClick={save}>
-        {editing ? 'Salvar alterações' : 'Salvar treino'}
-      </PrimaryButton>
-
-      {error && (
-        <p role="alert" className="mt-4 text-center text-[13px] text-muted">
-          {error}
-        </p>
-      )}
     </Screen>
   );
 }

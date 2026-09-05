@@ -8,7 +8,7 @@ import { useStore } from '../store/store';
 export function WorkoutDetail() {
   const { id = '' } = useParams();
   const navigate = useNavigate();
-  const { workouts, deleteWorkout, startSession } = useStore();
+  const { workouts, active, deleteWorkout, startSession } = useStore();
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
 
   const workout = workouts.find((w) => w.id === id);
@@ -26,19 +26,46 @@ export function WorkoutDetail() {
       },
     });
 
-  const begin = () => {
+  const start = () => {
     const session = startSession(workout);
     navigate(`/sessao/${session.id}`);
   };
 
+  // Starting over the top of a running session used to wipe it silently.
+  const begin = () => {
+    if (!active) return start();
+    setConfirmation({
+      title: 'Treino em andamento',
+      message: `${active.workoutName} ainda não foi finalizado. Começar outro descarta o que já foi registrado nele.`,
+      cta: 'Descartar e começar',
+      onConfirm: start,
+      alt: {
+        label: 'Retomar o que está aberto',
+        onClick: () => navigate(`/sessao/${active.id}`),
+      },
+    });
+  };
+
   return (
     <>
-      <Screen>
-        <BackButton className="mb-7 block" onClick={() => navigate('/')} />
+      <Screen
+        header={<BackButton className="block" onClick={() => navigate('/')} />}
+        footer={
+          <>
+            <PrimaryButton onClick={begin}>Começar</PrimaryButton>
+            <div className="mt-[22px] flex items-center justify-center gap-4">
+              <QuietButton onClick={() => navigate(`/treino/${workout.id}/editar`)}>
+                editar treino
+              </QuietButton>
+              <span className="h-3 w-px bg-line" />
+              <QuietButton onClick={askDelete}>excluir treino</QuietButton>
+            </div>
+          </>
+        }
+      >
+        <h1 className="mb-7 mt-2 text-screen font-bold">{workout.name}</h1>
 
-        <h1 className="mb-7 text-screen font-bold">{workout.name}</h1>
-
-        <div className="mb-9 flex flex-col gap-3">
+        <div className="flex flex-col gap-3">
           {workout.exercises.map((e) => (
             <div
               key={e.id}
@@ -52,16 +79,6 @@ export function WorkoutDetail() {
               </span>
             </div>
           ))}
-        </div>
-
-        <PrimaryButton onClick={begin}>Começar</PrimaryButton>
-
-        <div className="mt-[22px] flex items-center justify-center gap-4">
-          <QuietButton onClick={() => navigate(`/treino/${workout.id}/editar`)}>
-            editar treino
-          </QuietButton>
-          <span className="h-3 w-px bg-line" />
-          <QuietButton onClick={askDelete}>excluir treino</QuietButton>
         </div>
       </Screen>
 

@@ -1,11 +1,13 @@
 import { Modal } from './Modal';
-import { PrimaryButton, QuietButton } from './ui';
+import { OutlineButton, PrimaryButton, QuietButton } from './ui';
 
 export type Confirmation = {
   title: string;
   message: string;
   cta: string;
   onConfirm: () => void;
+  /** Optional middle way, shown as an outline button under the CTA. */
+  alt?: { label: string; onClick: () => void };
 };
 
 export function ConfirmDialog({
@@ -21,13 +23,21 @@ export function ConfirmDialog({
       subtitle={confirmation.message}
       onClose={onCancel}
       layer="confirm"
-    >
-      <PrimaryButton onClick={confirmation.onConfirm}>
-        {confirmation.cta}
-      </PrimaryButton>
-      <QuietButton className="mt-[18px] block w-full text-center" onClick={onCancel}>
-        cancelar
-      </QuietButton>
-    </Modal>
+      footer={
+        <>
+          <PrimaryButton onClick={confirmation.onConfirm}>
+            {confirmation.cta}
+          </PrimaryButton>
+          {confirmation.alt && (
+            <OutlineButton className="mt-3" onClick={confirmation.alt.onClick}>
+              {confirmation.alt.label}
+            </OutlineButton>
+          )}
+          <QuietButton className="mt-[18px] block w-full text-center" onClick={onCancel}>
+            cancelar
+          </QuietButton>
+        </>
+      }
+    />
   );
 }

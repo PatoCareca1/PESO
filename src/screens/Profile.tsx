@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Screen } from '../components/Screen';
 import { ConfirmDialog, type Confirmation } from '../components/ConfirmDialog';
 import { BackButton, FieldLabel, QuietButton } from '../components/ui';
-import { dateLabel, mmss } from '../lib/format';
+import { dateLabel, mmss, setCount } from '../lib/format';
+import { loggedSets } from '../lib/session';
 import { useStore } from '../store/store';
 import type { Theme } from '../types';
 
@@ -30,10 +31,8 @@ export function Profile() {
 
   return (
     <>
-      <Screen>
-        <BackButton className="mb-7 block" onClick={() => navigate('/')} />
-
-        <h1 className="mb-9 text-display font-bold">Perfil</h1>
+      <Screen header={<BackButton className="block" onClick={() => navigate('/')} />}>
+        <h1 className="mb-9 mt-2 text-display font-bold">Perfil</h1>
 
         <FieldLabel className="mb-3">Tema</FieldLabel>
         <div
@@ -64,36 +63,29 @@ export function Profile() {
 
         <div className="mb-[14px] flex items-baseline justify-between">
           <FieldLabel>Histórico</FieldLabel>
-          <QuietButton onClick={askClear}>limpar</QuietButton>
+          {sessions.length > 0 && <QuietButton onClick={askClear}>limpar</QuietButton>}
         </div>
 
         {sessions.length > 0 ? (
           <div className="flex flex-col gap-3">
-            {sessions.map((s) => {
-              const logged = s.exercises.reduce(
-                (total, e) =>
-                  total + e.sets.filter((x) => x.kg != null || x.reps != null).length,
-                0,
-              );
-              return (
-                <div
-                  key={s.id}
-                  className="flex items-center justify-between gap-3 rounded-card bg-surface px-5 py-[18px] shadow-card"
-                >
-                  <div className="min-w-0">
-                    <div className="mb-1 text-history-title font-semibold">
-                      {s.workoutName}
-                    </div>
-                    <div className="text-[13px] font-normal text-muted">
-                      {dateLabel(s.startedAt)} · {logged} séries
-                    </div>
+            {sessions.map((s) => (
+              <div
+                key={s.id}
+                className="flex items-center justify-between gap-3 rounded-card bg-surface px-5 py-[18px] shadow-card"
+              >
+                <div className="min-w-0">
+                  <div className="mb-1 truncate text-history-title font-semibold">
+                    {s.workoutName}
                   </div>
-                  <div className="text-[16px] font-medium text-muted tabular-nums">
-                    {mmss(s.durationSeconds * 1000)}
+                  <div className="text-[13px] font-normal text-muted">
+                    {dateLabel(s.startedAt)} · {setCount(loggedSets(s))}
                   </div>
                 </div>
-              );
-            })}
+                <div className="text-[16px] font-medium text-muted tabular-nums">
+                  {mmss(s.durationSeconds * 1000)}
+                </div>
+              </div>
+            ))}
           </div>
         ) : (
           <p className="text-[14px] text-muted">Nenhum treino registrado.</p>

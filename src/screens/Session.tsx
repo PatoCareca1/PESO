@@ -6,13 +6,8 @@ import { Divider, OutlineButton, PrimaryButton, QuietButton } from '../component
 import { AdhocModal } from '../modals/AdhocModal';
 import { LogModal } from '../modals/LogModal';
 import { mmss } from '../lib/format';
+import { doneCount } from '../lib/session';
 import { useElapsedMs, useStore } from '../store/store';
-import type { ActiveExercise } from '../types';
-
-/** Sets count as logged once either field has something in it. */
-function filledCount(exercise: ActiveExercise): number {
-  return exercise.sets.filter((s) => s.kg !== '' || s.reps !== '').length;
-}
 
 export function Session() {
   const { id = '' } = useParams();
@@ -53,7 +48,22 @@ export function Session() {
 
   return (
     <>
-      <Screen>
+      <Screen
+        footer={
+          <>
+            <OutlineButton className="mb-3" onClick={() => setSheet('adhoc')}>
+              + exercício nesta sessão
+            </OutlineButton>
+            <PrimaryButton onClick={finish}>Finalizar treino</PrimaryButton>
+            <QuietButton
+              className="mt-[22px] block w-full text-center"
+              onClick={askAbandon}
+            >
+              sair sem salvar
+            </QuietButton>
+          </>
+        }
+      >
         <div className="mb-[22px] text-center text-label font-semibold uppercase text-muted">
           {active.workoutName}
         </div>
@@ -76,7 +86,7 @@ export function Session() {
 
         <Divider className="mb-7" />
 
-        <div className="mb-4 flex flex-col gap-3">
+        <div className="flex flex-col gap-3">
           {active.exercises.map((e, i) => (
             <button
               key={`${e.name}-${i}`}
@@ -94,24 +104,11 @@ export function Session() {
                 {e.name}
               </span>
               <span className="text-[15px] font-medium text-muted tabular-nums">
-                {filledCount(e)}/{e.targetSets}
+                {doneCount(e)}/{e.targetSets}
               </span>
             </button>
           ))}
         </div>
-
-        <OutlineButton className="mb-3" onClick={() => setSheet('adhoc')}>
-          + exercício nesta sessão
-        </OutlineButton>
-
-        <PrimaryButton onClick={finish}>Finalizar treino</PrimaryButton>
-
-        <QuietButton
-          className="mt-[22px] block w-full text-center"
-          onClick={askAbandon}
-        >
-          sair sem salvar
-        </QuietButton>
       </Screen>
 
       {sheet === 'adhoc' && <AdhocModal onClose={() => setSheet(null)} />}

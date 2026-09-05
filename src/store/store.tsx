@@ -8,7 +8,22 @@ import {
   type ReactNode,
 } from 'react';
 import { KEYS, read, remove, write } from '../lib/storage';
-import { toNumberOrNull, uid } from '../lib/format';
+import { uid } from '../lib/format';
+import {
+  SCHEMA_VERSION,
+  normalizeActive,
+  normalizeSessions,
+  normalizeSettings,
+  normalizeWorkouts,
+} from '../lib/migrate';
+import {
+  IDLE_TIMER,
+  completeSession,
+  elapsedMs,
+  findSuggestion,
+  newActiveSession,
+  toggledTimer,
+} from '../lib/session';
 import type {
   ActiveRecord,
   ActiveSession,
@@ -19,11 +34,10 @@ import type {
   Workout,
 } from '../types';
 
-const IDLE_TIMER = { running: false, base: 0, since: 0 } as const;
-
 type WorkoutInput = {
   name: string;
-  exercises: Omit<Exercise, 'id'>[];
+  /** `id` present = existing exercise, kept stable across edits. */
+  exercises: (Omit<Exercise, 'id'> & { id?: string })[];
 };
 
 type StoreValue = {
@@ -37,6 +51,7 @@ type StoreValue = {
   updateWorkout: (id: string, input: WorkoutInput) => void;
   deleteWorkout: (id: string) => void;
 
+  /** Replaces any session in progress — callers confirm first. */
   startSession: (workout: Workout) => ActiveSession;
   updateActive: (recipe: (session: ActiveSession) => void) => void;
   finishSession: () => void;
@@ -51,24 +66,26 @@ type StoreValue = {
 
 const StoreContext = createContext<StoreValue | null>(null);
 
-function withIds(exercises: Omit<Exercise, 'id'>[]): Exercise[] {
-  return exercises.map((e) => ({ ...e, id: uid() }));
+function withIds(exercises: WorkoutInput['exercises']): Exercise[] {
+  return exercises.map((e) => ({ ...e, id: e.id ?? uid() }));
 }
 
 export function StoreProvider({ children }: { children: ReactNode }) {
+  // Every slice is normalised on the way in: the data may predate this build.
   const [workouts, setWorkouts] = useState<Workout[]>(() =>
-    read<Workout[]>(KEYS.workouts, []),
+    normalizeWorkouts(read<unknown>(KEYS.workouts, [])),
   );
   const [sessions, setSessions] = useState<Session[]>(() =>
-    read<Session[]>(KEYS.sessions, []),
+    normalizeSessions(read<unknown>(KEYS.sessions, [])),
   );
   const [theme, setThemeState] = useState<Theme>(
-    () => read(KEYS.settings, { theme: 'dark' as Theme }).theme ?? 'dark',
+    () => normalizeSettings(read<unknown>(KEYS.settings, null)).theme,
   );
   const [record, setRecord] = useState<ActiveRecord | null>(() =>
-    read<ActiveRecord | null>(KEYS.active, null),
+    normalizeActive(read<unknown>(KEYS.active, null)),
   );
 
+  useEffect(() => write(KEYS.schema, SCHEMA_VERSION), []);
   useEffect(() => write(KEYS.workouts, workouts), [workouts]);
   useEffect(() => write(KEYS.sessions, sessions), [sessions]);
   useEffect(() => write(KEYS.settings, { theme }), [theme]);
@@ -111,26 +128,22 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
-  // Deleting a template never touches history: sessions keep their snapshot.
+  // Deleting a template never touches the snapshots in history; only the
+  // back-reference is cleared, as README §4 specifies.
   const deleteWorkout = useCallback((id: string) => {
     setWorkouts((prev) => prev.filter((w) => w.id !== id));
+    setSessions((prev) =>
+      prev.map((s) => (s.workoutId === id ? { ...s, workoutId: null } : s)),
+    );
+    setRecord((prev) =>
+      prev && prev.session.workoutId === id
+        ? { ...prev, session: { ...prev.session, workoutId: null } }
+        : prev,
+    );
   }, []);
 
   const startSession = useCallback((workout: Workout): ActiveSession => {
-    const session: ActiveSession = {
-      id: uid(),
-      workoutId: workout.id,
-      workoutName: workout.name,
-      startedAt: new Date().toISOString(),
-      exercises: workout.exercises.map((e) => ({
-        name: e.name,
-        targetSets: e.sets,
-        targetReps: e.reps,
-        adhoc: false,
-        status: 'pending',
-        sets: Array.from({ length: e.sets }, () => ({ kg: '', reps: '' })),
-      })),
-    };
+    const session = newActiveSession(workout);
     setRecord({ session, timer: { ...IDLE_TIMER } });
     return session;
   }, []);
@@ -148,40 +161,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   const toggleTimer = useCallback(() => {
-    setRecord((prev) => {
-      if (!prev) return prev;
-      const t = prev.timer;
-      const timer = t.running
-        ? { running: false, base: t.base + (Date.now() - t.since), since: 0 }
-        : { running: true, base: t.base, since: Date.now() };
-      return { ...prev, timer };
-    });
+    setRecord((prev) => (prev ? { ...prev, timer: toggledTimer(prev.timer) } : prev));
   }, []);
 
   // Kept free of state-updater side effects: a React updater may run twice, and
   // this must append to history exactly once.
   const finishSession = useCallback(() => {
     if (!record) return;
-    const { session, timer } = record;
-    const elapsed = timer.base + (timer.running ? Date.now() - timer.since : 0);
-    const done: Session = {
-      id: session.id,
-      workoutId: session.workoutId,
-      workoutName: session.workoutName,
-      startedAt: session.startedAt,
-      durationSeconds: Math.round(elapsed / 1000),
-      exercises: session.exercises.map((e) => ({
-        name: e.name,
-        targetSets: e.targetSets,
-        targetReps: e.targetReps,
-        adhoc: e.adhoc,
-        status: e.status,
-        sets: e.sets.map((s) => ({
-          kg: toNumberOrNull(s.kg),
-          reps: toNumberOrNull(s.reps),
-        })),
-      })),
-    };
+    const done = completeSession(record);
     setSessions((list) => [done, ...list]);
     setRecord(null);
   }, [record]);
@@ -193,14 +180,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const clearHistory = useCallback(() => setSessions([]), []);
 
   const suggestion = useCallback(
-    (name: string, index: number): SetEntry | null => {
-      for (const session of sessions) {
-        const match = session.exercises.find((e) => e.name === name);
-        const set = match?.sets[index];
-        if (set && (set.kg != null || set.reps != null)) return set;
-      }
-      return null;
-    },
+    (name: string, index: number) => findSuggestion(sessions, name, index),
     [sessions],
   );
 
@@ -265,5 +245,5 @@ export function useElapsedMs(): number {
     return () => window.clearInterval(iv);
   }, [timer.running]);
 
-  return timer.base + (timer.running ? Date.now() - timer.since : 0);
+  return elapsedMs(timer);
 }

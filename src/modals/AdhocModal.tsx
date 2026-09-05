@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Modal } from '../components/Modal';
 import { FieldLabel, PrimaryButton, QuietButton, TextField } from '../components/ui';
 import { digits } from '../lib/format';
+import { newAdhocExercise } from '../lib/session';
 import { useStore } from '../store/store';
 
 /**
@@ -18,14 +19,7 @@ export function AdhocModal({ onClose }: { onClose: () => void }) {
     if (!trimmed) return;
     const count = Math.max(1, parseInt(sets, 10) || 3);
     updateActive((session) => {
-      session.exercises.push({
-        name: trimmed,
-        targetSets: count,
-        targetReps: 0,
-        adhoc: true,
-        status: 'pending',
-        sets: Array.from({ length: count }, () => ({ kg: '', reps: '' })),
-      });
+      session.exercises.push(newAdhocExercise(trimmed, count));
     });
     onClose();
   };
@@ -35,6 +29,16 @@ export function AdhocModal({ onClose }: { onClose: () => void }) {
       title="Exercício avulso"
       subtitle="Só nesta sessão — o template do treino não muda."
       onClose={onClose}
+      footer={
+        <>
+          <PrimaryButton onClick={add} disabled={!name.trim()}>
+            Adicionar
+          </PrimaryButton>
+          <QuietButton className="mt-[18px] block w-full text-center" onClick={onClose}>
+            cancelar
+          </QuietButton>
+        </>
+      }
     >
       <FieldLabel className="mb-2">Nome</FieldLabel>
       <TextField
@@ -52,14 +56,9 @@ export function AdhocModal({ onClose }: { onClose: () => void }) {
         onChange={(e) => setSets(digits(e.target.value))}
         inputMode="numeric"
         placeholder="3"
-        className="mb-6 tabular-nums"
+        className="tabular-nums"
         aria-label="Séries"
       />
-
-      <PrimaryButton onClick={add}>Adicionar</PrimaryButton>
-      <QuietButton className="mt-[18px] block w-full text-center" onClick={onClose}>
-        cancelar
-      </QuietButton>
     </Modal>
   );
 }

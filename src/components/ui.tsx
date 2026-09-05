@@ -50,6 +50,7 @@ export function QuietButton({ className, ...props }: ButtonProps) {
       {...props}
       className={cx(
         'p-0 text-[13px] text-muted transition-colors duration-160 ease-out hover:text-text',
+        'disabled:cursor-default disabled:opacity-40 disabled:hover:text-muted',
         className,
       )}
     />

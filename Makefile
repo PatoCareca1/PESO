@@ -6,7 +6,7 @@ PORT ?= 5173
 PREVIEW_PORT ?= 4173
 
 .DEFAULT_GOAL := help
-.PHONY: help install dev mobile build preview check deploy ship clean distclean
+.PHONY: help install dev mobile build preview check test deploy ship clean distclean
 
 help: ## Lista os alvos disponíveis
 	@awk 'BEGIN {FS = ":.*?## "; print "Alvos:"} /^[a-zA-Z_-]+:.*?## / {printf "  \033[1m%-10s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -27,8 +27,12 @@ dev: node_modules ## Servidor de desenvolvimento (padrão: http://localhost:5173
 mobile: node_modules ## Igual ao dev, exposto na rede local (abrir no celular)
 	$(NPM) run dev -- --host --port $(PORT)
 
-check: node_modules ## Só o type-check
+test: node_modules ## Testes unitários (lógica pura, sem DOM)
+	$(NPM) test
+
+check: node_modules ## Type-check + testes
 	$(NPM) run typecheck
+	$(NPM) test
 
 build: node_modules ## Type-check + build de produção em dist/
 	$(NPM) run build
